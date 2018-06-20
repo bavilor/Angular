@@ -1,0 +1,19 @@
+table {
+	border: 3px solid grey; 
+}
+th {
+	border: 1px solid grey;
+}
+td {
+	border: 1px solid grey;
+}
+th, td {
+	border: 1px solid grey;
+}
+#table{
+	padding: 10px;
+}
+
+#totalPrice{
+	width: 400px;
+}
