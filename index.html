@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html ng-app="main">
+<html ng-app="applicationModule">
 	<head>
 		<title>Web Client</title>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
@@ -7,7 +7,7 @@
 		<link rel="stylesheet" href = "css/table.css">  </link>		
 	</head>
 	<body>
-		<div ng-controller='mainController'>
+		<div ng-controller='ApplicationController as application'>
 			<table id="table" align="center">
   				<thead>
   					<tr>
@@ -17,28 +17,29 @@
   					</tr>
   				</thead>	
   				<tbody>
-					<tr ng-repeat='record in tableData'>
-						<td width="100px" align="center">{{record}} </td>
-						<td width="100px" align="center">{{record}} </td>
+					<tr ng-repeat='product in application.products'>
+						<td width="100px" align="center">{{product}} </td>
+						<td width="100px" align="center">{{product}} </td>
 						<td>
 							<input type="number" name="amount" min="0"  placeholder="0">
 						</td>
 					</tr>
   				</tbody>
   			</table>
-  			<p align="center" ng-model="totalPrice"> Total price: {{ totalPrice }} </p>
-  			<div align="center">
-		  		<button ng-click="changeTotalPrice()"> Make order </button>
-		  		<button> Update order </button>	
-		  		<button> Send upd order </button>
-		  		<button ng-click='generateKeyPair()'> Generate new key pair</button>
+  			<p align="center" ng-model="totalPrice"> Total price: {{ application.totalPrice }} </p>
+  			<div align="center" ng-controller="ButtonsController as buttons">
+		  		<button ng-click="buttons.makeOrder()"> Make order </button>
+		  		<button ng-click="updateOrder()"> Update order </button>	
+		  		<button ng-click="sendOrder()"> Send upd order </button>
+		  		<button ng-click="generateKeyPair()"> Generate new key pair</button>
 	  		</div>
 		</div>
+		<script src="./js/cryptography.js"></script>
+		<script src="./js/index.js"></script>	
 		<script src="./js/indexedDB.js"></script>
 		<script src="./js/help.js"></script>
 		<script src="./js/connection.js"></script>	
-		<script src="./js/cryptography.js"></script>
-		<script src="./js/main.js"></script>
-		<script src="./js/index.js"></script>
+		
+
 	</body>
 </html>
