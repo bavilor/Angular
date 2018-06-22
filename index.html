@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html ng-app="applicationModule">
 	<head>
-		<title>Web Client</title>
+		<title>Angular Client</title>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 		<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.0/angular.min.js"></script>
 		<link rel="stylesheet" href = "css/table.css">  </link>		
@@ -18,17 +18,17 @@
   				</thead>	
   				<tbody>
 					<tr ng-repeat='product in application.products'>
-						<td width="100px" align="center">{{product}} </td>
-						<td width="100px" align="center">{{product}} </td>
+						<td width="100px" align="center"> {{ product.name }} </td>
+						<td width="100px" align="center"> {{ product.price }} </td>
 						<td>
-							<input type="number" name="amount" min="0"  placeholder="0">
+							<input type="number" name="amount" min="0"  placeholder="0" ng-keypress="return false">
 						</td>
 					</tr>
   				</tbody>
   			</table>
-  			<p align="center" ng-model="totalPrice"> Total price: {{ application.totalPrice }} </p>
-  			<div align="center" ng-controller="ButtonsController as buttons">
-		  		<button ng-click="buttons.makeOrder()"> Make order </button>
+  			<p align="center" ng-model="application.totalPrice"> Total price: {{ application.totalPrice }} </p>
+  			<div align="center">
+		  		<button ng-click="application.makeOrder()"> Make order </button>
 		  		<button ng-click="updateOrder()"> Update order </button>	
 		  		<button ng-click="sendOrder()"> Send upd order </button>
 		  		<button ng-click="generateKeyPair()"> Generate new key pair</button>
@@ -39,7 +39,5 @@
 		<script src="./js/indexedDB.js"></script>
 		<script src="./js/help.js"></script>
 		<script src="./js/connection.js"></script>	
-		
-
 	</body>
 </html>

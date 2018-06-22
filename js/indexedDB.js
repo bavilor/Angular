@@ -1,98 +1,97 @@
 var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB || window.shimIndexedDB;
 
 angular
-	.module('applicationModule')
-	.service('checkKeyPairService', function(){
+	.module('indexedDBModule', ['cryptoModule'])
+	.service('indexedDBService', function(cryptoService){
 
-		var saveRsaKeyPair = function(){
-			return generateRsaKeyPair()
+		return {
+			loadKeyPairs : loadKeyPairs,
+			createKeyPair : createSaveRsaKeyPair
+		}
+
+		function createSaveRsaKeyPair(){
+			return cryptoService.generateRsaKeys()
 				.then(keyPair => {
 					writeKeyPair(keyPair);
 					return readKeyPairs();
 				})
 		}
 
-		var loadKeyPairs = function() {
+		function loadKeyPairs() {
 			return readKeyPairs()
 				.then(keyPairs => {
 					if(keyPairs.length !== 0){
 						return keyPairs;
 					}else{
-						return saveRsaKeyPair();
+						return createSaveRsaKeyPair();
 					}
 				})
 				.catch(res => {
-					return saveRsaKeyPair();
+					return createSaveRsaKeyPair();
 				})
 		}
 
-		return {
-			checkKeys : loadKeyPairs,
-			createKeyPair : saveRsaKeyPair
+		function writeKeyPair(keyPair) {
+
+			var open = indexedDB.open("AngularKeyStore", 1);
+
+			open.onupgradeneeded = function() {
+				var db = open.result;
+				var store = db.createObjectStore("keyPair", {keyPath: "id", autoIncrement: true});
+			};
+
+			open.onsuccess = function() {
+				var db = open.result;
+				var tx = db.transaction("keyPair", "readwrite");
+				var store = tx.objectStore("keyPair");
+
+				store.put(keyPair);
+				console.log("Key pair was saved");
+
+				tx.oncomplete = function() {
+				    db.close();
+				};
+			}
+
+			open.onerror = function(error){
+				console.error(error);
+			}
 		}
-	})
 
+		function readKeyPairs(){
 
-function writeKeyPair (keyPair) {
+			var keyPairs = new Promise((resolve, reject) =>{
 
-	var open = indexedDB.open("AngularKeyStore", 1);
+				var open = indexedDB.open("AngularKeyStore", 1);
 
-	open.onupgradeneeded = function() {
-		var db = open.result;
-		var store = db.createObjectStore("keyPair", {keyPath: "id", autoIncrement: true});
-	};
+				open.onupgradeneeded = function() {
+				    console.error("DB isn't exist. Creating the new one..");
 
-	open.onsuccess = function() {
-		var db = open.result;
-		var tx = db.transaction("keyPair", "readwrite");
-		var store = tx.objectStore("keyPair");
+				    var db = open.result;
+			    	var store = db.createObjectStore("keyPair", {keyPath: "id", autoIncrement: true});
 
-		store.put(keyPair);
-		console.log("Key pair was saved");
+				    reject();
+				};
 
-		tx.oncomplete = function() {
-		    db.close();
-		};
-	}
+				open.onsuccess = function() {
+				    var db = open.result;
+				    var tx = db.transaction("keyPair", "readwrite");
+				    var store = tx.objectStore("keyPair");
+				   	var request = store.getAll();
 
-	open.onerror = function(error){
-		console.error(error);
-	}
-}
+				    request.onsuccess = function() {
+				        resolve(request.result);
+				    };
 
-function readKeyPairs(){
+				    tx.oncomplete = function() {
+				        db.close();
+				    };
+				}
+				open.onerror = function(error){
+					console.error(error);
+				}
+			})
 
-	var keyPairs = new Promise((resolve, reject) =>{
-
-		var open = indexedDB.open("AngularKeyStore", 1);
-
-		open.onupgradeneeded = function() {
-		    console.error("DB isn't exist. Creating the new one..");
-
-		    var db = open.result;
-	    	var store = db.createObjectStore("keyPair", {keyPath: "id", autoIncrement: true});
-
-		    reject();
-		};
-
-		open.onsuccess = function() {
-		    var db = open.result;
-		    var tx = db.transaction("keyPair", "readwrite");
-		    var store = tx.objectStore("keyPair");
-		   	var request = store.getAll();
-
-		    request.onsuccess = function() {
-		        resolve(request.result);
-		    };
-
-		    tx.oncomplete = function() {
-		        db.close();
-		    };
+			return keyPairs;	
 		}
-		open.onerror = function(error){
-			console.error(error);
-		}
-	})
-
-	return keyPairs;	
-}
+})

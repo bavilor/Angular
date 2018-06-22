@@ -1,8 +1,12 @@
 angular
-	.module('applicationModule')
+	.module('connectionModule', [])
 	.service('connectionService', function() {
 
-		var getRequest = function(keyPair){
+		return {
+			getPriceList : requestGET
+		}
+
+		function requestGET(b64PublicRsaKey, url){
 			return $.ajax({
 				type:'GET',
 				url:url,
@@ -10,30 +14,8 @@ angular
 					request.setRequestHeader('key', b64PublicRsaKey);
 				}
 			})
-
-			console.log(keyPair);
+			.catch(err => {
+				console.error(err);
+			})
 		}
-
-		return {
-			getPriceList : getRequest
-		}
-
-	})
-
-
-
-
-
-function requestGet(url, b64PublicRsaKey){
-	console.log(b64PublicRsaKey);
-	return $.ajax({
-		type:'GET',
-		url:url,
-		beforeSend: request=>{
-			request.setRequestHeader('key', b64PublicRsaKey);
-		}
-	})
-	.catch(err => {
-		console.error(err);
-	})
-}
+})
