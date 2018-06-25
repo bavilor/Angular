@@ -3,6 +3,7 @@ angular
 	.service('helpService', function(){
 		return {
 			transformPublicKey : getB64FromRsaPublicKey,
+			string2Uint8Array : string2Uint8Array,
 			string2ArrayBuffer : string2ArrayBuffer,
 			arrayBuffer2String : arrayBuffer2String,
 		}

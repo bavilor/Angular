@@ -5,21 +5,34 @@ angular
 		this.totalPrice = applicationService.getTotalPrice();
 		this.products = [];
 
-		applicationService.prepareKeys()	
-		.then(empty => {
-			return applicationService.requestProductList();
-		})
-		.then(productList => {
-			$timeout(function() {
-				self.products = productList;
+
+
+		applicationService.checkKeyPairs()
+			.then(rsaKeyPairs => {
+				return applicationService.prepareKeys(rsaKeyPairs);
 			})
-		})
+			.then(empty => {
+				return applicationService.requestProductList();
+			})
+			.then(productList => {
+				$timeout(function() {
+					self.products = productList;
+				})
+			})
 		
 		this.keyPress = function($event){
-			return false;
+			var e = $event.keyCode;
+			if(e === 45 || e === 101 || e === 46){
+				$event.preventDefault();
+			}	
 		}
 
-
+		this.generateKeyPair = function(){
+			applicationService.createKeyPair()
+				.then(rsaKeyPairs => {
+					applicationService.prepareKeys(rsaKeyPairs);
+				})
+		}
 
 	})
 	.service('applicationService', function(indexedDBService, cryptoService, helpService, connectionService){
@@ -29,7 +42,7 @@ angular
 		var updateOrderUrl = "http://localhost:8080/updateOrder";
 		var getServerPublicKeyUrl = "http://localhost:8080/getServerPublicKey";
 		var updateUsersUrl = "http://localhost:8080/deleteUsers";
-
+		
 		var currentKeyPair;
 		var b64RsaPublicKey;
 		var totalPrice = 0;
@@ -39,25 +52,40 @@ angular
 			setTotalPrice : setTotalPrice,
 			setCurrentKeyPair : setCurrentKeyPair,
 			getCurrentKeyPair : getCurrentKeyPair,
-			prepareKeys : prepareKeys,
 			requestProductList : requestProductList,
+			prepareKeys : prepareKeys,
+			createKeyPair : createKeyPair,
+			checkKeyPairs : checkKeyPairs,
 		}
 
-		function prepareKeys() {
-			var x = new Promise((resolve, reject) => {
-				indexedDBService.loadKeyPairs()
-				.then(keyPairs => {
-					currentKeyPair = keyPairs[keyPairs.length-1];
-					console.log("Keys're checked");
-					return cryptoService.exportPublicKey(currentKeyPair.publicKey);
+		function prepareKeys(rsaKeyPairs) {
+			console.log(rsaKeyPairs);
+				currentKeyPair = rsaKeyPairs[rsaKeyPairs.length-1];
+				return cryptoService.exportPublicKey(currentKeyPair.publicKey)
+					.then(publicKeyArrayBuffer => {
+						b64RsaPublicKey = JSON.stringify(helpService.transformPublicKey(publicKeyArrayBuffer));
+						console.log("Key is exported");
+					})		
+		}
+
+		function checkKeyPairs() {
+			return indexedDBService.readKeyPairs()
+				.then(rsaKeyPairs => {
+					if(rsaKeyPairs.length !== 0){
+						console.log("Keys're checked");
+						return rsaKeyPairs;
+					}else{
+						return createKeyPair();
+					}
 				})
-				.then(publicKeyArrayBuffer => {
-					b64RsaPublicKey = JSON.stringify(helpService.transformPublicKey(publicKeyArrayBuffer));
-					console.log("Key is exported");
-					resolve();
-				})		
-			})
-			return x;
+		}
+
+		function createKeyPair(){
+			return cryptoService.generateRsaKeys()
+				.then(rsaKeyPair => {
+					indexedDBService.writeKeyPair(rsaKeyPair);
+					return indexedDBService.readKeyPairs();
+				})
 		}
 
 		function requestProductList(){
@@ -83,4 +111,4 @@ angular
 		function getCurrentKeyPair(){
 			return currentKeyPair;
 		}
-})
+	})

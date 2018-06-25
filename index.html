@@ -4,7 +4,7 @@
 		<title>Angular Client</title>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 		<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.0/angular.min.js"></script>
-		<link rel="stylesheet" href = "css/table.css">  </link>		
+		<link rel="stylesheet" href = "./index.css">  </link>		
 	</head>
 	<body>
 		<div ng-controller='ApplicationController as application'>
@@ -21,7 +21,7 @@
 						<td width="100px" align="center"> {{ product.name }} </td>
 						<td width="100px" align="center"> {{ product.price }} </td>
 						<td>
-							<input type="number" name="amount" min="0"  placeholder="0" ng-keypress="return false">
+							<input type="number" name="amount" min="0"  placeholder="0" ng-keypress="application.keyPress($event)">
 						</td>
 					</tr>
   				</tbody>
@@ -31,13 +31,13 @@
 		  		<button ng-click="application.makeOrder()"> Make order </button>
 		  		<button ng-click="updateOrder()"> Update order </button>	
 		  		<button ng-click="sendOrder()"> Send upd order </button>
-		  		<button ng-click="generateKeyPair()"> Generate new key pair</button>
+		  		<button ng-click="application.generateKeyPair()"> Generate new key pair</button>
 	  		</div>
 		</div>
-		<script src="./js/cryptography.js"></script>
-		<script src="./js/index.js"></script>	
-		<script src="./js/indexedDB.js"></script>
-		<script src="./js/help.js"></script>
-		<script src="./js/connection.js"></script>	
+		<script src="./js/lib/cryptography.js"></script>
+		<script src="./index.js"></script>	
+		<script src="./js/lib/indexedDB.js"></script>
+		<script src="./js/lib/help.js"></script>
+		<script src="./js/lib/connection.js"></script>	
 	</body>
 </html>

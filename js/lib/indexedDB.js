@@ -5,34 +5,11 @@ angular
 	.service('indexedDBService', function(cryptoService){
 
 		return {
-			loadKeyPairs : loadKeyPairs,
-			createKeyPair : createSaveRsaKeyPair
-		}
-
-		function createSaveRsaKeyPair(){
-			return cryptoService.generateRsaKeys()
-				.then(keyPair => {
-					writeKeyPair(keyPair);
-					return readKeyPairs();
-				})
-		}
-
-		function loadKeyPairs() {
-			return readKeyPairs()
-				.then(keyPairs => {
-					if(keyPairs.length !== 0){
-						return keyPairs;
-					}else{
-						return createSaveRsaKeyPair();
-					}
-				})
-				.catch(res => {
-					return createSaveRsaKeyPair();
-				})
+			readKeyPairs : readKeyPairs,
+			writeKeyPair : writeKeyPair
 		}
 
 		function writeKeyPair(keyPair) {
-
 			var open = indexedDB.open("AngularKeyStore", 1);
 
 			open.onupgradeneeded = function() {
@@ -70,7 +47,7 @@ angular
 				    var db = open.result;
 			    	var store = db.createObjectStore("keyPair", {keyPath: "id", autoIncrement: true});
 
-				    reject();
+				    resolve([]);
 				};
 
 				open.onsuccess = function() {

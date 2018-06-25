@@ -15,6 +15,7 @@ angular
 				}
 			})
 			.catch(err => {
+				console.error("Can't connected to the server!");
 				console.error(err);
 			})
 		}
