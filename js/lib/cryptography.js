@@ -5,27 +5,15 @@ angular
 		return {
 			generateRsaKeys : generateRsaKeyPair,
 			exportPublicKey : exportPublicRsaKey,
-			decodeProductList : decodeServerResponse
-		}
+			restoreAesKey : restoreAesKey,
+			decryptRsaData : decryptRsaData,
+			decryptAesData : decryptAesData,
+			importRsaPublicKey : importRsaPublicKey,
+			encryptAesData : encryptAesData,
+			encryptRsaData : encryptRsaData,
+			wrapAesKey : wrapAesKey,
+			generateAesKey : generateAesKey,
 
-		function decodeServerResponse(response, currentKeyPair){
-			var x = new Promise((resolve, reject) => {
-				var encrResponse = helpService.string2ArrayBuffer(atob(response));
-				var aesKey;
-
-				restoreAesKey(encrResponse.slice(0,256), currentKeyPair.privateKey)
-					.then(decrAesKey => {
-						aesKey = decrAesKey;
-						return decryptRsaData(encrResponse.slice(256,512), currentKeyPair.privateKey)
-					})
-					.then(decrIv => {
-						return decryptAesData(aesKey, decrIv, encrResponse.slice(512,encrResponse.length))
-					})
-					.then(priceList => {
-						resolve(JSON.parse(helpService.arrayBuffer2String(priceList)));
-					})
-			})
-			return x;
 		}
 
 		function generateRsaKeyPair(){
@@ -97,5 +85,73 @@ angular
 			.catch(err => {
 			   	console.error(err);
 			});
+		}
+
+		function importRsaPublicKey(publicKeyArrayBuffer){
+			return window.crypto.subtle.importKey(
+		    	"spki",
+		    	publicKeyArrayBuffer,
+		    	{
+			     	name:'RSA-OAEP',
+			      	hash:{ name:'SHA-256' }
+		  		},
+		  		false,
+		  		['encrypt', 'wrapKey'])
+			.catch(err => {
+			    console.error(err);
+			});
+		}
+
+		function generateAesKey(){
+			return window.crypto.subtle.generateKey(
+				{
+					name: 'AES-CBC',
+					length: 128
+				},
+				true, 
+				['encrypt'])
+			.catch(err => {
+				console.error(err);
+			})
+		}
+
+		function encryptAesData(aes, iv, data){
+			return window.crypto.subtle.encrypt(
+				{
+					name: 'AES-CBC',
+					iv: iv
+				},
+				aes,
+				data)
+			.catch(err => {
+				console.error(err);
+			})
+		}
+
+		function encryptRsaData(publicKey, data){
+		  	return window.crypto.subtle.encrypt(
+			  	{
+			    	name: "RSA-OAEP"
+			  	},
+			  	publicKey,
+			  	data)
+			.catch(err => {
+			      console.error(err);
+			});
+		}
+
+
+		function wrapAesKey(aes, publicKey){
+			return window.crypto.subtle.wrapKey(
+				"raw",
+				aes,
+				publicKey,
+				{
+					name: "RSA-OAEP",
+					hash: {name: "SHA-256"}
+				})
+			.catch(err => {
+				console.error(err);
+			})	
 		}
 })

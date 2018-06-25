@@ -3,7 +3,8 @@ angular
 	.service('connectionService', function() {
 
 		return {
-			getPriceList : requestGET
+			requestGET : requestGET,
+			requestPOST : requestPOST
 		}
 
 		function requestGET(b64PublicRsaKey, url){
@@ -18,5 +19,23 @@ angular
 				console.error("Can't connected to the server!");
 				console.error(err);
 			})
+		}
+
+		function requestPOST(b64PublicRsaKey, url, order){
+			return $.ajax({
+		    	type: 'POST',
+		    	contentType:'application/json',
+		    	url: url,
+		    	beforeSend: request => {
+		      		request.setRequestHeader("key", b64PublicRsaKey);
+		    	},
+		    	data: order,
+		  	})
+		  	.then(function(xml, textStatus, xhr) {
+        		return xhr.status;
+    		})
+		  	.catch(err => {
+		    	console.error(err);
+		  	})  	
 		}
 })

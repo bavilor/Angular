@@ -21,7 +21,7 @@
 						<td width="100px" align="center"> {{ product.name }} </td>
 						<td width="100px" align="center"> {{ product.price }} </td>
 						<td>
-							<input type="number" name="amount" min="0"  placeholder="0" ng-keypress="application.keyPress($event)">
+							<input type="number" name="amount" min="0" ng-model="product.amount" ng-keypress="application.keyPress($event)" >
 						</td>
 					</tr>
   				</tbody>
