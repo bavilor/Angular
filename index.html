@@ -29,8 +29,8 @@
   			<p align="center" ng-model="application.totalPrice"> Total price: {{ application.totalPrice }} </p>
   			<div align="center">
 		  		<button ng-click="application.makeOrder()"> Make order </button>
-		  		<button ng-click="updateOrder()"> Update order </button>	
-		  		<button ng-click="sendOrder()"> Send upd order </button>
+		  		<button ng-click="application.updateOrder()"> Update order </button>	
+		  		<button ng-click="application.sendOrder()" ng-disabled="application.disabledButt"> Send upd order </button>
 		  		<button ng-click="application.generateKeyPair()"> Generate new key pair</button>
 	  		</div>
 		</div>

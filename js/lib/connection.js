@@ -21,13 +21,14 @@ angular
 			})
 		}
 
-		function requestPOST(b64PublicRsaKey, url, order){
+		function requestPOST(b64PublicRsaKey, url, order, b64PublicRsaPss){
 			return $.ajax({
 		    	type: 'POST',
 		    	contentType:'application/json',
 		    	url: url,
 		    	beforeSend: request => {
-		      		request.setRequestHeader("key", b64PublicRsaKey);
+		      		request.setRequestHeader('key', b64PublicRsaKey),
+		      		request.setRequestHeader('sign', b64PublicRsaPss)
 		    	},
 		    	data: order,
 		  	})

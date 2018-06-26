@@ -13,7 +13,9 @@ angular
 			encryptRsaData : encryptRsaData,
 			wrapAesKey : wrapAesKey,
 			generateAesKey : generateAesKey,
-
+			generateRsaPss : generateRsaPss,
+			signingData : signingData,
+			exportRsaPss : exportRsaPss
 		}
 
 		function generateRsaKeyPair(){
@@ -63,7 +65,7 @@ angular
 		}
 
 		function decryptRsaData(encrRsaData, privateKey){
-			return window.crypto.subtle.decrypt(
+			return $window.crypto.subtle.decrypt(
 				{
 			    	name: 'RSA-OAEP',
 			  	},
@@ -75,7 +77,7 @@ angular
 		}
 
 		function decryptAesData(aesKey, iv, encrAesData){
-		  	return window.crypto.subtle.decrypt(
+		  	return $window.crypto.subtle.decrypt(
 			    {
 			      	name: 'AES-CBC',
 			      	iv: iv
@@ -88,7 +90,7 @@ angular
 		}
 
 		function importRsaPublicKey(publicKeyArrayBuffer){
-			return window.crypto.subtle.importKey(
+			return $window.crypto.subtle.importKey(
 		    	"spki",
 		    	publicKeyArrayBuffer,
 		    	{
@@ -103,7 +105,7 @@ angular
 		}
 
 		function generateAesKey(){
-			return window.crypto.subtle.generateKey(
+			return $window.crypto.subtle.generateKey(
 				{
 					name: 'AES-CBC',
 					length: 128
@@ -116,7 +118,7 @@ angular
 		}
 
 		function encryptAesData(aes, iv, data){
-			return window.crypto.subtle.encrypt(
+			return $window.crypto.subtle.encrypt(
 				{
 					name: 'AES-CBC',
 					iv: iv
@@ -129,7 +131,7 @@ angular
 		}
 
 		function encryptRsaData(publicKey, data){
-		  	return window.crypto.subtle.encrypt(
+		  	return $window.crypto.subtle.encrypt(
 			  	{
 			    	name: "RSA-OAEP"
 			  	},
@@ -140,9 +142,8 @@ angular
 			});
 		}
 
-
 		function wrapAesKey(aes, publicKey){
-			return window.crypto.subtle.wrapKey(
+			return $window.crypto.subtle.wrapKey(
 				"raw",
 				aes,
 				publicKey,
@@ -153,5 +154,42 @@ angular
 			.catch(err => {
 				console.error(err);
 			})	
+		}
+
+		function generateRsaPss(){
+			return $window.crypto.subtle.generateKey(
+		    {
+		        name: "RSA-PSS",
+		        modulusLength: 2048, 
+		        publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+		        hash: {name: "SHA-256"},
+		    },
+		    true, 
+		    ["sign","verify"] )
+			.catch(function(err){
+			    console.error(err);
+			});
+		}
+
+		function signingData(data, key){
+			return window.crypto.subtle.sign(
+		    {
+		        name: "RSA-PSS",
+		        saltLength: 128, 
+		    },
+		    key,
+		    data)
+			.catch(err => {
+			    console.error(err);
+			});
+		}
+
+		function exportRsaPss(key){
+			return window.crypto.subtle.exportKey(
+		    "spki", 
+		    key)
+			.catch(err => {
+			    console.error(err);
+			});
 		}
 })
