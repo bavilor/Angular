@@ -75,6 +75,7 @@ angular
 					return applicationService.sendUpdate(serverPublicKey, self.products, "http://localhost:8080/updateOrder")
 				})
 				.then(response => {
+
 					if(response === 200){
 						applicationService.sendDelete("http://localhost:8080/deleteUsers");
 					}
@@ -109,30 +110,30 @@ angular
 		function prepareKeys(rsaKeyPairs) {
 			currentKeyPair = rsaKeyPairs[rsaKeyPairs.length-1];
 			return cryptoService.exportPublicKey(currentKeyPair.publicKey)
-				.then(publicKeyArrayBuffer => {
-					b64RsaPublicKey = JSON.stringify(helpService.transformPublicKey(publicKeyArrayBuffer));
-					console.log("Key is exported");
-				})		
+			.then(publicKeyArrayBuffer => {
+				b64RsaPublicKey = JSON.stringify(helpService.transformPublicKey(publicKeyArrayBuffer));
+				console.log("Key is exported");
+			})		
 		}
 
 		function checkKeyPairs() {
 			return indexedDBService.readKeyPairs()
-				.then(rsaKeyPairs => {
-					if(rsaKeyPairs.length !== 0){
-						console.log("Keys're checked");
-						return rsaKeyPairs;
-					}else{
-						return createKeyPair();
-					}
-				})
+			.then(rsaKeyPairs => {
+				if(rsaKeyPairs.length !== 0){
+					console.log("Keys're checked");
+					return rsaKeyPairs;
+				}else{
+					return createKeyPair();
+				}
+			})
 		}
 
 		function createKeyPair(){
 			return cryptoService.generateRsaKeys()
-				.then(rsaKeyPair => {
-					indexedDBService.writeKeyPair(rsaKeyPair);
-					return indexedDBService.readKeyPairs();
-				})
+			.then(rsaKeyPair => {
+				indexedDBService.writeKeyPair(rsaKeyPair);
+				return indexedDBService.readKeyPairs();
+			})
 		}
 
 		function requestProductList(url){
@@ -140,20 +141,20 @@ angular
 			var aesKey;
 
 			return connectionService.requestGET(b64RsaPublicKey, url)
-				.then(response => {
-					encrResponse = helpService.string2ArrayBuffer(atob(response));
-					return cryptoService.restoreAesKey(encrResponse.slice(0,256), currentKeyPair.privateKey);
-				})
-				.then(decrAesKey => {
-					aesKey = decrAesKey;
-					return cryptoService.decryptRsaData(encrResponse.slice(256,512), currentKeyPair.privateKey)
-				})
-				.then(decrIv => {
-					return cryptoService.decryptAesData(aesKey, decrIv, encrResponse.slice(512,encrResponse.length))
-				})
-				.then(priceList => {
-					return JSON.parse(helpService.arrayBuffer2String(priceList));
-				})
+			.then(response => {
+				encrResponse = helpService.string2ArrayBuffer(atob(response));
+				return cryptoService.restoreAesKey(encrResponse.slice(0,256), currentKeyPair.privateKey);
+			})
+			.then(decrAesKey => {
+				aesKey = decrAesKey;
+				return cryptoService.decryptRsaData(encrResponse.slice(256,512), currentKeyPair.privateKey)
+			})
+			.then(decrIv => {
+				return cryptoService.decryptAesData(aesKey, decrIv, encrResponse.slice(512,encrResponse.length))
+			})
+			.then(priceList => {
+				return JSON.parse(helpService.arrayBuffer2String(priceList));
+			})
 		}
 
 		function formProductList(productListFromServer){
@@ -169,10 +170,10 @@ angular
 			var encrResponse;
 			var aesKey;
 			return connectionService.requestGET(b64RsaPublicKey, url)
-				.then(response => {
-					encrServerPublicKey = helpService.string2ArrayBuffer(atob(response));
-					return cryptoService.importRsaPublicKey(encrServerPublicKey);
-				})
+			.then(response => {
+				encrServerPublicKey = helpService.string2ArrayBuffer(atob(response));
+				return cryptoService.importRsaPublicKey(encrServerPublicKey);
+			})
 		}
 
 		function sendProductList(serverPublicKey, orderList, url){
@@ -184,29 +185,29 @@ angular
 			var encrAes;
 
 			return cryptoService.generateAesKey()
-				.then(aes => {
-					self.aes = aes;
-					return cryptoService.encryptAesData(aes, iv, helpService.string2ArrayBuffer(JSON.stringify(orderList)));
-				})
-				.then(encrOrderList => {
-					self.encrOrderList = new Uint8Array(encrOrderList);
-					return cryptoService.encryptRsaData(serverPublicKey, iv);
-				})
-				.then(encrIv => {
-					self.encrIv =  new Uint8Array(encrIv);
-					return cryptoService.wrapAesKey(self.aes, serverPublicKey);
-				})
-				.then(encrAes => {
-					self.encrAes = new Uint8Array(encrAes);
+			.then(aes => {
+				self.aes = aes;
+				return cryptoService.encryptAesData(aes, iv, helpService.string2ArrayBuffer(JSON.stringify(orderList)));
+			})
+			.then(encrOrderList => {
+				self.encrOrderList = new Uint8Array(encrOrderList);
+				return cryptoService.encryptRsaData(serverPublicKey, iv);
+			})
+			.then(encrIv => {
+				self.encrIv =  new Uint8Array(encrIv);
+				return cryptoService.wrapAesKey(self.aes, serverPublicKey);
+			})
+			.then(encrAes => {
+				self.encrAes = new Uint8Array(encrAes);
 
-					var order =  new Uint8Array(self.encrAes.length + self.encrIv.length + self.encrOrderList.length);
+				var order =  new Uint8Array(self.encrAes.length + self.encrIv.length + self.encrOrderList.length);
 
-					order.set(self.encrAes);
-					order.set(self.encrIv, self.encrAes.length);
-					order.set(self.encrOrderList, self.encrAes.length + self.encrIv.length);
+				order.set(self.encrAes);
+				order.set(self.encrIv, self.encrAes.length);
+				order.set(self.encrOrderList, self.encrAes.length + self.encrIv.length);
 
-					return connectionService.requestPOST(b64RsaPublicKey, url, btoa(helpService.arrayBuffer2String(order)));
-				})
+				return connectionService.requestPOST(b64RsaPublicKey, url, btoa(helpService.arrayBuffer2String(order)));
+			})
 		}	
 
 		function formOrderList(orderList){
@@ -235,65 +236,62 @@ angular
 			self.keyIndex = 0;	
 
 			return connectionService.requestGET(b64RsaPublicKey, url)
-				.then(response => {
+			.then(response => {
+				self.encrResponse = helpService.string2ArrayBuffer(atob(response));
+				return indexedDBService.readKeyPairs()
+			})
+			.then(allKeyPairs => {
+				self.allKeyPairs = allKeyPairs;
 
-					self.encrResponse = helpService.string2ArrayBuffer(atob(response));
-					return indexedDBService.readKeyPairs()
-				})
-				.then(allKeyPairs => {
-					self.allKeyPairs = allKeyPairs;
+				var p = new Promise((resolve, reject) => {
+					resolve(rep());
 
-					var p = new Promise((resolve, reject) => {
-						resolve(rep());
+					function rep(){
+						return cryptoService.decryptRsaData(self.encrResponse.slice(self.pos+512, self.pos+768), currentKeyPair.privateKey)
+						.then(length => {
+							self.length = parseInt(helpService.arrayBuffer2String(length));
 
-						function rep(){
-							return cryptoService.decryptRsaData(self.encrResponse.slice(self.pos+512, self.pos+768), currentKeyPair.privateKey)
-								.then(length => {
-									self.length = parseInt(helpService.arrayBuffer2String(length));
+							self.encrAes = self.encrResponse.slice(self.pos, self.pos+256);
+							self.encrIv = self.encrResponse.slice(self.pos+256, self.pos+512);
+							self.encrData = self.encrResponse.slice(self.pos+768, self.pos+768+self.length);
 
-									self.encrAes = self.encrResponse.slice(self.pos, self.pos+256);
-									self.encrIv = self.encrResponse.slice(self.pos+256, self.pos+512);
-									self.encrData = self.encrResponse.slice(self.pos+768, self.pos+768+self.length);
-
-									return decryptOrder(self.encrAes, self.encrIv, self.encrData, self.allKeyPairs[self.keyIndex].privateKey);
-								})
-								.then(order => {
-									if(order !== undefined){
-										//deleteKeyPairs[deleteKeyPairs.length] = allKeyPairs[keyIndex].publicKey;
-										self.orders += helpService.arrayBuffer2String(order);
-									}
-									if(self.keyIndex < self.allKeyPairs.length-1){
-										self.keyIndex++;
-										return rep();
-									}else if (self.pos+768+self.length < self.encrResponse.byteLength){
-										self.keyIndex = 0;
-										self.pos += 768+self.length;
-										return rep();
-									}else{
-										return self.orders;
-									}	
-								})
+							return decryptOrder(self.encrAes, self.encrIv, self.encrData, self.allKeyPairs[self.keyIndex].privateKey);
+						})
+						.then(order => {
+							if(order !== undefined){
+								self.orders += helpService.arrayBuffer2String(order);
 							}
-					})
-
-					return p;
+							if(self.keyIndex < self.allKeyPairs.length-1){
+								self.keyIndex++;
+								return rep();
+							}else if (self.pos+768+self.length < self.encrResponse.byteLength){
+								self.keyIndex = 0;
+								self.pos += 768+self.length;
+								return rep();
+							}else{
+								return self.orders;
+							}	
+						})
+					}
 				})
-				.then(orders => {
-					return JSON.parse(orders.replace(/\]\[/g, ","));
-				})
+				return p;
+			})
+			.then(orders => {
+				return JSON.parse(orders.replace(/\]\[/g, ","));
+			})
 		}
 
 		function decryptOrder(encrAes, encrIv, encrData, privateKey){
 			var self = this;
 
 			return cryptoService.restoreAesKey(encrAes, privateKey)
-				.then(aes => {
-					self.aes = aes;
-					return cryptoService.decryptRsaData(encrIv, privateKey);
-				})
-				.then(iv => {
-					return cryptoService.decryptAesData(self.aes, iv, encrData);
-				})
+			.then(aes => {
+				self.aes = aes;
+				return cryptoService.decryptRsaData(encrIv, privateKey);
+			})
+			.then(iv => {
+				return cryptoService.decryptAesData(self.aes, iv, encrData);
+			})
 		}
 
 		function sendUpdate(serverPublicKey, orderList, url){
@@ -301,75 +299,81 @@ angular
 			var iv = $window.crypto.getRandomValues(new Uint8Array(16));
 
 			return cryptoService.generateAesKey()
-				.then(aes => {
-					self.aes = aes;
-					return cryptoService.encryptAesData(aes, iv, helpService.string2ArrayBuffer(JSON.stringify(orderList)));
-				})
-				.then(encrOrderList => {
-					self.encrOrderList = new Uint8Array(encrOrderList);
-					return cryptoService.encryptRsaData(serverPublicKey, iv);
-				})
-				.then(encrIv => {
-					self.encrIv =  new Uint8Array(encrIv);
-					return cryptoService.wrapAesKey(self.aes, serverPublicKey);
-				})
-				.then(encrAes => {
-					self.encrAes = new Uint8Array(encrAes);
-					return cryptoService.generateRsaPss();
-				})
-				.then(rsaPss => {
-					self.rsaPss = rsaPss;
-					return cryptoService.signingData(helpService.string2ArrayBuffer('key'), rsaPss.privateKey);
-				})
-				.then(sign => {
-					self.sign = new Uint8Array(sign);
-					return cryptoService.exportRsaPss(self.rsaPss.publicKey);
-				})
-				.then(exportedRsaPss => {
-					var order =  new Uint8Array(self.encrAes.length+self.encrIv.length+self.encrOrderList.length+self.sign.length);
+			.then(aes => {
+				self.aes = aes;
+				return cryptoService.encryptAesData(aes, iv, helpService.string2ArrayBuffer(JSON.stringify(orderList)));
+			})
+			.then(encrOrderList => {
+				self.encrOrderList = new Uint8Array(encrOrderList);
+				return cryptoService.encryptRsaData(serverPublicKey, iv);
+			})
+			.then(encrIv => {
+				self.encrIv =  new Uint8Array(encrIv);
+				return cryptoService.wrapAesKey(self.aes, serverPublicKey);
+			})
+			.then(encrAes => {
+				self.encrAes = new Uint8Array(encrAes);
+				return cryptoService.generateRsaPss();
+			})
+			.then(rsaPss => {
+				self.rsaPss = rsaPss;
+				return cryptoService.signingData(helpService.string2ArrayBuffer('key'), rsaPss.privateKey);
+			})
+			.then(sign => {
+				self.sign = new Uint8Array(sign);
+				return cryptoService.exportRsaPss(self.rsaPss.publicKey);
+			})
+			.then(exportedRsaPss => {
+				var order =  new Uint8Array(self.encrAes.length+self.encrIv.length+self.encrOrderList.length+self.sign.length);
 
-					order.set(self.encrAes);
-					order.set(self.encrIv, self.encrAes.length);
-					order.set(self.encrOrderList, self.encrAes.length+self.encrIv.length);
-					order.set(self.sign, self.encrAes.length+self.encrIv.length+self.encrOrderList.length);
+				order.set(self.encrAes);
+				order.set(self.encrIv, self.encrAes.length);
+				order.set(self.encrOrderList, self.encrAes.length+self.encrIv.length);
+				order.set(self.sign, self.encrAes.length+self.encrIv.length+self.encrOrderList.length);
 
 
-					return connectionService.requestPOST(
-						b64RsaPublicKey, 
-						url, 
-						btoa(helpService.arrayBuffer2String(order)),
-						JSON.stringify(helpService.transformPublicKey(exportedRsaPss)));
-				})
+				return connectionService.requestPOST(
+					b64RsaPublicKey, 
+					url, 
+					btoa(helpService.arrayBuffer2String(order)),
+					JSON.stringify(helpService.transformPublicKey(exportedRsaPss)));
+			})
 		}
 
 		function sendDelete(url){
 			var self = this;
 			self.keysArray = [];
+			self.keyIndex = 0;
 
-			indexedDBService.readKeyPairs()
-				.then(allKeyPairs => {
-					return p;
-					var p = new Promise((resolve, reject) => {
-						resolve(rep());
+			return indexedDBService.readKeyPairs()
+			.then(allKeyPairs => {
+				console.log(allKeyPairs);
+				var p = new Promise((resolve, reject) => {
+					resolve(rep());
 
-						function rep(){
-							var keyIndex = 0;
+					function rep(){
+						
 
-							return cryptoService.exportPublicKey(allKeyPairs[keyIndex].publicKey)
-								.then(publicKeyArrayBuffer => {
-									keysArray[keyIndex] = helpService.transformPublicKey(publicKeyArrayBuffer);
-									keyIndex++;
+						return cryptoService.exportPublicKey(allKeyPairs[self.keyIndex].publicKey)
+						.then(publicKeyArrayBuffer => {
+							self.keysArray[self.keyIndex] =  btoa(helpService.arrayBuffer2String(publicKeyArrayBuffer))
+							self.keyIndex++;
 
-									if(keyIndex < allKeyPairs.length-1){
-										return rep();
-									}else{
-										console.log(keysArray);
-										return keysArray;
-									}
-								})		
-						}
-					})
-
+							if(self.keyIndex < allKeyPairs.length-1){
+								return rep();
+							}else{
+								return self.keysArray;
+							}
+						})		
+					}
 				})
+				return p;
+			})
+			.then(result => {
+				return connectionService.requestPOST(
+					b64RsaPublicKey, 
+					url, 
+					JSON.stringify(result));
+			})
 		}
 	})					
