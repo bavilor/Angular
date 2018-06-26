@@ -41,7 +41,5 @@ angular
 		 		bufView[i] = string.charCodeAt(i);
 			}
 		  	return buf;
-		}
-
-		
+		}	
 })

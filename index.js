@@ -38,11 +38,8 @@ angular
 			var emptyOrder = true;
 			var orderList = applicationService.formOrderList(self.products);
 			if(orderList.length !== 0){
-				self.totalPrice = applicationService.calcTotalPrice(orderList);
-				applicationService.requestServerPublicKey("http://localhost:8080/getServerPublicKey")
-				.then(serverPublicKey => {
-					return applicationService.sendProductList(serverPublicKey, orderList, "http://localhost:8080/setOrder");
-				})
+				self.totalPrice = applicationService.calcTotalPrice(orderList);	
+				applicationService.sendProductList(orderList, "http://localhost:8080/setOrder", "http://localhost:8080/getServerPublicKey")
 				.then(statusCode => {
 					console.log(statusCode);
 				})
@@ -70,16 +67,13 @@ angular
 		}
 
 		this.sendOrder = function(){
-			applicationService.requestServerPublicKey("http://localhost:8080/getServerPublicKey")
-				.then(serverPublicKey => {
-					return applicationService.sendUpdate(serverPublicKey, self.products, "http://localhost:8080/updateOrder")
-				})
-				.then(response => {
+			applicationService.sendUpdate(self.products, "http://localhost:8080/updateOrder", "http://localhost:8080/getServerPublicKey")
+			.then(response => {
 
-					if(response === 200){
-						applicationService.sendDelete("http://localhost:8080/deleteUsers");
-					}
-				})		
+				if(response === 200){
+					applicationService.sendDelete("http://localhost:8080/deleteUsers", "http://localhost:8080/getServerPublicKey");
+				}
+			})		
 		}
 	})
 	.service('applicationService', function($window, indexedDBService, cryptoService, helpService, connectionService){		
@@ -104,7 +98,9 @@ angular
 			calcTotalPrice : calcTotalPrice,
 			requestOrderList : requestOrderList,
 			sendUpdate : sendUpdate,
-			sendDelete : sendDelete
+			sendDelete : sendDelete,
+			formEncrPostRequest : formEncrPostRequest,
+
 		}
 
 		function prepareKeys(rsaKeyPairs) {
@@ -138,19 +134,15 @@ angular
 
 		function requestProductList(url){
 			var encrResponse;
-			var aesKey;
 
 			return connectionService.requestGET(b64RsaPublicKey, url)
 			.then(response => {
 				encrResponse = helpService.string2ArrayBuffer(atob(response));
-				return cryptoService.restoreAesKey(encrResponse.slice(0,256), currentKeyPair.privateKey);
-			})
-			.then(decrAesKey => {
-				aesKey = decrAesKey;
-				return cryptoService.decryptRsaData(encrResponse.slice(256,512), currentKeyPair.privateKey)
-			})
-			.then(decrIv => {
-				return cryptoService.decryptAesData(aesKey, decrIv, encrResponse.slice(512,encrResponse.length))
+				return decryptData(
+					encrResponse.slice(0,256), 
+					encrResponse.slice(256,512), 
+					encrResponse.slice(512,encrResponse.length), 
+					currentKeyPair.privateKey)
 			})
 			.then(priceList => {
 				return JSON.parse(helpService.arrayBuffer2String(priceList));
@@ -159,6 +151,7 @@ angular
 
 		function formProductList(productListFromServer){
 			var productList = [];
+
 			for(var i = 0; i < productListFromServer.length; i++){
 				var prod = productListFromServer[i];
 				productList.push(new product(prod.name, prod.price, 0))
@@ -167,8 +160,6 @@ angular
 		}
 
 		function requestServerPublicKey(url){
-			var encrResponse;
-			var aesKey;
 			return connectionService.requestGET(b64RsaPublicKey, url)
 			.then(response => {
 				encrServerPublicKey = helpService.string2ArrayBuffer(atob(response));
@@ -176,13 +167,9 @@ angular
 			})
 		}
 
-		function sendProductList(serverPublicKey, orderList, url){
+		function formEncrPostRequest(serverPublicKey, orderList){
 			var self = this;
 			var iv = $window.crypto.getRandomValues(new Uint8Array(16));
-			var aes;
-			var encrOrderList;
-			var encrIv;
-			var encrAes;
 
 			return cryptoService.generateAesKey()
 			.then(aes => {
@@ -199,15 +186,24 @@ angular
 			})
 			.then(encrAes => {
 				self.encrAes = new Uint8Array(encrAes);
-
 				var order =  new Uint8Array(self.encrAes.length + self.encrIv.length + self.encrOrderList.length);
-
+				
 				order.set(self.encrAes);
 				order.set(self.encrIv, self.encrAes.length);
 				order.set(self.encrOrderList, self.encrAes.length + self.encrIv.length);
 
-				return connectionService.requestPOST(b64RsaPublicKey, url, btoa(helpService.arrayBuffer2String(order)));
+				return order;
 			})
+		}
+
+		function sendProductList(orderList, requestURL, serverPublicKeyURL){
+			return requestServerPublicKey(serverPublicKeyURL)
+			.then(serverPublicKey => {
+				return formEncrPostRequest(serverPublicKey, orderList)
+			})
+			.then(order => {
+				return connectionService.requestPOST(b64RsaPublicKey, requestURL, btoa(helpService.arrayBuffer2String(order)));
+			})	
 		}	
 
 		function formOrderList(orderList){
@@ -255,7 +251,7 @@ angular
 							self.encrIv = self.encrResponse.slice(self.pos+256, self.pos+512);
 							self.encrData = self.encrResponse.slice(self.pos+768, self.pos+768+self.length);
 
-							return decryptOrder(self.encrAes, self.encrIv, self.encrData, self.allKeyPairs[self.keyIndex].privateKey);
+							return decryptData(self.encrAes, self.encrIv, self.encrData, self.allKeyPairs[self.keyIndex].privateKey);
 						})
 						.then(order => {
 							if(order !== undefined){
@@ -281,7 +277,7 @@ angular
 			})
 		}
 
-		function decryptOrder(encrAes, encrIv, encrData, privateKey){
+		function decryptData(encrAes, encrIv, encrData, privateKey){
 			var self = this;
 
 			return cryptoService.restoreAesKey(encrAes, privateKey)
@@ -294,25 +290,16 @@ angular
 			})
 		}
 
-		function sendUpdate(serverPublicKey, orderList, url){
+		function sendUpdate(orderList, requestURL, serverPublicKeyURL){
 			var self = this;
 			var iv = $window.crypto.getRandomValues(new Uint8Array(16));
 
-			return cryptoService.generateAesKey()
-			.then(aes => {
-				self.aes = aes;
-				return cryptoService.encryptAesData(aes, iv, helpService.string2ArrayBuffer(JSON.stringify(orderList)));
+			return requestServerPublicKey(serverPublicKeyURL)
+			.then(serverPublicKey => {
+				return formEncrPostRequest(serverPublicKey, orderList)
 			})
-			.then(encrOrderList => {
-				self.encrOrderList = new Uint8Array(encrOrderList);
-				return cryptoService.encryptRsaData(serverPublicKey, iv);
-			})
-			.then(encrIv => {
-				self.encrIv =  new Uint8Array(encrIv);
-				return cryptoService.wrapAesKey(self.aes, serverPublicKey);
-			})
-			.then(encrAes => {
-				self.encrAes = new Uint8Array(encrAes);
+			.then(encrOrder => {
+				self.encrOrder = encrOrder;
 				return cryptoService.generateRsaPss();
 			})
 			.then(rsaPss => {
@@ -324,36 +311,30 @@ angular
 				return cryptoService.exportRsaPss(self.rsaPss.publicKey);
 			})
 			.then(exportedRsaPss => {
-				var order =  new Uint8Array(self.encrAes.length+self.encrIv.length+self.encrOrderList.length+self.sign.length);
+				var order =  new Uint8Array(self.encrOrder.length+self.sign.length);
 
-				order.set(self.encrAes);
-				order.set(self.encrIv, self.encrAes.length);
-				order.set(self.encrOrderList, self.encrAes.length+self.encrIv.length);
-				order.set(self.sign, self.encrAes.length+self.encrIv.length+self.encrOrderList.length);
-
+				order.set(self.encrOrder);
+				order.set(self.sign, self.encrOrder.length);
 
 				return connectionService.requestPOST(
 					b64RsaPublicKey, 
-					url, 
+					requestURL, 
 					btoa(helpService.arrayBuffer2String(order)),
 					JSON.stringify(helpService.transformPublicKey(exportedRsaPss)));
 			})
 		}
 
-		function sendDelete(url){
+		function sendDelete(requestURL, serverPublicKeyURL){
 			var self = this;
 			self.keysArray = [];
 			self.keyIndex = 0;
 
 			return indexedDBService.readKeyPairs()
 			.then(allKeyPairs => {
-				console.log(allKeyPairs);
 				var p = new Promise((resolve, reject) => {
 					resolve(rep());
 
 					function rep(){
-						
-
 						return cryptoService.exportPublicKey(allKeyPairs[self.keyIndex].publicKey)
 						.then(publicKeyArrayBuffer => {
 							self.keysArray[self.keyIndex] =  btoa(helpService.arrayBuffer2String(publicKeyArrayBuffer))
@@ -370,10 +351,10 @@ angular
 				return p;
 			})
 			.then(result => {
-				return connectionService.requestPOST(
-					b64RsaPublicKey, 
-					url, 
-					JSON.stringify(result));
+				return sendUpdate(result, requestURL, serverPublicKeyURL);
+			})
+			.then(resp => {
+				console.log(resp);
 			})
 		}
 	})					
